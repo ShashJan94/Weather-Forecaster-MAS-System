@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-12-09T02:51:23.036510",
+  "baseline": {
+    "temp_MAE": 6.007777755591604,
+    "temp_RMSE": 6.603491421352793,
+    "temp_R2": -4.8048246500478164,
+    "weather_Accuracy": 0.2222222222222222,
+    "weather_F1_macro": 0.12121212121212122,
+    "weather_F1_weighted": 0.0808080808080808
+  },
+  "transformer": {
+    "temp_MAE": 4.976932048797607,
+    "temp_RMSE": 5.598733227366767,
+    "temp_R2": -3.172740936279297,
+    "weather_Accuracy": 0.2222222222222222,
+    "weather_F1_macro": 0.12121212121212122,
+    "weather_F1_weighted": 0.0808080808080808
+  },
+  "comparison": {
+    "temp_winner": "Transformer",
+    "weather_winner": "Baseline"
+  }
+}
