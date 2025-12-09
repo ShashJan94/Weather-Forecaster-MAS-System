@@ -291,15 +291,12 @@ def get_cached_prediction(location: str):
         # Get Baseline prediction (better for weather classification)
         weather_classes = ['sunny', 'cloudy', 'rainy', 'snowy']
         sequence_flat = sequence.numpy().reshape(1, -1)
-        baseline_weather_pred = baseline_agent.predict(sequence_flat)
-        weather_pred = weather_classes[int(baseline_weather_pred['weather_class'][0])]
-        weather_probs = baseline_weather_pred.get('weather_probs', {weather_pred: 0.7})
+        temp_baseline, class_pred, class_probs = baseline_agent.predict(sequence_flat)
+        weather_pred = weather_classes[int(class_pred[0])]
         
-        if isinstance(weather_probs, np.ndarray):
-            weather_probs = {cls: float(p) for cls, p in zip(weather_classes, weather_probs[0])}
-            confidence = max(weather_probs.values())
-        else:
-            confidence = weather_probs.get(weather_pred, 0.6)
+        # Convert class probabilities to dict
+        weather_probs = {cls: float(p) for cls, p in zip(weather_classes, class_probs[0])}
+        confidence = max(weather_probs.values())
         
         is_cold = temp_pred < 10
         
@@ -358,17 +355,13 @@ def make_quick_prediction(location: str = "Warsaw"):
         
         # Get Baseline prediction (better for weather classification with imbalanced data)
         sequence_flat = sequence.numpy().reshape(1, -1)
-        baseline_weather_pred = baseline_agent.predict(sequence_flat)
+        temp_baseline, class_pred, class_probs = baseline_agent.predict(sequence_flat)
         weather_classes = ['sunny', 'cloudy', 'rainy', 'snowy']
-        weather_pred = weather_classes[int(baseline_weather_pred['weather_class'][0])]
-        weather_probs = baseline_weather_pred.get('weather_probs', {weather_pred: 0.7})
+        weather_pred = weather_classes[int(class_pred[0])]
         
-        # Use max probability as confidence
-        if isinstance(weather_probs, np.ndarray):
-            weather_probs = {cls: float(p) for cls, p in zip(weather_classes, weather_probs[0])}
-            confidence = max(weather_probs.values())
-        else:
-            confidence = weather_probs.get(weather_pred, 0.6)
+        # Convert class probabilities to dict
+        weather_probs = {cls: float(p) for cls, p in zip(weather_classes, class_probs[0])}
+        confidence = max(weather_probs.values())
         
         is_cold = temp_pred < 10
         
