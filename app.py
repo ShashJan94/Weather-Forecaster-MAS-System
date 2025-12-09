@@ -780,13 +780,13 @@ def main():
                 
                 # Update axes - cleaner labels
                 fig.update_xaxes(tickfont=dict(size=9), row=1, col=1)
-                fig.update_yaxes(title_text="°C", titlefont=dict(size=11), tickfont=dict(size=9), row=1, col=1)
+                fig.update_yaxes(title=dict(text="°C", font=dict(size=11)), tickfont=dict(size=9), row=1, col=1)
                 fig.update_xaxes(tickfont=dict(size=9), row=1, col=2)
-                fig.update_yaxes(title_text="Value", titlefont=dict(size=11), tickfont=dict(size=9), row=1, col=2)
+                fig.update_yaxes(title=dict(text="Value", font=dict(size=11)), tickfont=dict(size=9), row=1, col=2)
                 fig.update_xaxes(tickfont=dict(size=9), row=2, col=1)
-                fig.update_yaxes(title_text="km/h", titlefont=dict(size=11), tickfont=dict(size=9), row=2, col=1)
+                fig.update_yaxes(title=dict(text="km/h", font=dict(size=11)), tickfont=dict(size=9), row=2, col=1)
                 fig.update_xaxes(tickfont=dict(size=12), row=2, col=2)
-                fig.update_yaxes(title_text="%", titlefont=dict(size=11), tickfont=dict(size=9), range=[0, 100], row=2, col=2)
+                fig.update_yaxes(title=dict(text="%", font=dict(size=11)), tickfont=dict(size=9), range=[0, 100], row=2, col=2)
                 
                 st.plotly_chart(fig, use_container_width=True)
                 
