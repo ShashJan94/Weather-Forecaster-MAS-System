@@ -189,13 +189,20 @@ def get_weather_gradient(weather_type: str) -> str:
 def check_saved_models() -> dict:
     """Check if trained models exist."""
     transformer_path = MODELS_DIR / "transformer_model.pth"
-    baseline_path = MODELS_DIR / "baseline_model.joblib"
+    baseline_dir = MODELS_DIR / "baseline"
+    
+    # Baseline saves to directory with regressor/classifier files
+    baseline_exists = (
+        baseline_dir.exists() and 
+        (baseline_dir / "randomforest_regressor.joblib").exists() and
+        (baseline_dir / "randomforest_classifier.joblib").exists()
+    )
     
     return {
         'transformer': transformer_path.exists(),
-        'baseline': baseline_path.exists(),
+        'baseline': baseline_exists,
         'transformer_path': transformer_path,
-        'baseline_path': baseline_path
+        'baseline_path': baseline_dir
     }
 
 
@@ -452,7 +459,7 @@ def train_models_ui(data_source: str, num_epochs: int, location: str):
         progress.progress(90)
         
         MODELS_DIR.mkdir(parents=True, exist_ok=True)
-        baseline_agent.save_models(MODELS_DIR / "baseline_model.joblib")
+        baseline_agent.save_models(MODELS_DIR / "baseline")
         transformer_agent.save(MODELS_DIR / "transformer_model.pth")
         
         progress.progress(100)

@@ -239,8 +239,8 @@ def run_baseline_training(splits, config: Config):
             if isinstance(value, float):
                 logger.info(f"  {name}: {value:.4f}")
     
-    # Save model
-    model_path = config.models_dir / "baseline_model.joblib"
+    # Save model (baseline saves to directory)
+    model_path = config.models_dir / "baseline"
     baseline_agent.save_models(model_path)
     
     return baseline_agent
