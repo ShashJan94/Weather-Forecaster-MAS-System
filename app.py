@@ -587,15 +587,15 @@ def main():
                 fig = make_subplots(
                     rows=2, cols=2,
                     subplot_titles=(
-                        '🌡️ Temperature Trend',
-                        '💧 Humidity & Pressure',
-                        '💨 Wind Speed',
-                        '📊 Weather Summary'
+                        '<b>🌡️ Temperature Trend</b>',
+                        '<b>💧 Humidity & Pressure</b>',
+                        '<b>💨 Wind Speed</b>',
+                        '<b>📊 Prediction Probabilities</b>'
                     ),
                     specs=[[{"type": "scatter"}, {"type": "scatter"}],
                            [{"type": "scatter"}, {"type": "bar"}]],
-                    vertical_spacing=0.12,
-                    horizontal_spacing=0.1
+                    vertical_spacing=0.18,
+                    horizontal_spacing=0.12
                 )
                 
                 x_data = df['date'] if 'date' in df.columns else list(range(1, len(df) + 1))
@@ -607,25 +607,28 @@ def main():
                     name='Avg Temp',
                     line=dict(color='#667eea', width=3),
                     marker=dict(size=8, symbol='circle'),
-                    hovertemplate='%{x}<br>Temp: %{y:.1f}°C<extra></extra>'
+                    hovertemplate='%{x}<br>Temp: %{y:.1f}°C<extra></extra>',
+                    showlegend=False
                 ), row=1, col=1)
                 
                 if 'temp_max' in df.columns and 'temp_min' in df.columns:
                     fig.add_trace(go.Scatter(
                         x=x_data, y=df['temp_max'],
                         mode='lines',
-                        name='Max Temp',
+                        name='Max',
                         line=dict(color='#ff6b6b', width=1.5, dash='dot'),
-                        hovertemplate='Max: %{y:.1f}°C<extra></extra>'
+                        hovertemplate='Max: %{y:.1f}°C<extra></extra>',
+                        showlegend=False
                     ), row=1, col=1)
                     fig.add_trace(go.Scatter(
                         x=x_data, y=df['temp_min'],
                         mode='lines',
-                        name='Min Temp',
+                        name='Min',
                         line=dict(color='#4ecdc4', width=1.5, dash='dot'),
                         fill='tonexty',
                         fillcolor='rgba(78, 205, 196, 0.1)',
-                        hovertemplate='Min: %{y:.1f}°C<extra></extra>'
+                        hovertemplate='Min: %{y:.1f}°C<extra></extra>',
+                        showlegend=False
                     ), row=1, col=1)
                 
                 # Add tomorrow's prediction as a point
@@ -633,9 +636,10 @@ def main():
                 fig.add_trace(go.Scatter(
                     x=[tomorrow_date], y=[pred['temperature']],
                     mode='markers',
-                    name='Tomorrow (Predicted)',
+                    name='⭐ Tomorrow',
                     marker=dict(size=14, color='#ff9500', symbol='star', line=dict(width=2, color='white')),
-                    hovertemplate='Tomorrow<br>Predicted: %{y:.1f}°C<extra></extra>'
+                    hovertemplate='Tomorrow<br>Predicted: %{y:.1f}°C<extra></extra>',
+                    showlegend=False
                 ), row=1, col=1)
                 
                 # Humidity plot
@@ -643,22 +647,23 @@ def main():
                     fig.add_trace(go.Scatter(
                         x=x_data, y=df['humidity'],
                         mode='lines+markers',
-                        name='Humidity',
+                        name='Humidity %',
                         line=dict(color='#3498db', width=2),
                         marker=dict(size=6),
-                        hovertemplate='Humidity: %{y:.0f}%<extra></extra>'
+                        hovertemplate='Humidity: %{y:.0f}%<extra></extra>',
+                        showlegend=False
                     ), row=1, col=2)
                 
-                # Pressure plot (secondary y-axis simulated with different scale)
+                # Pressure plot
                 if 'pressure' in df.columns:
                     fig.add_trace(go.Scatter(
                         x=x_data, y=df['pressure'],
                         mode='lines+markers',
-                        name='Pressure (hPa)',
+                        name='Pressure hPa',
                         line=dict(color='#9b59b6', width=2),
                         marker=dict(size=6),
-                        yaxis='y3',
-                        hovertemplate='Pressure: %{y:.0f} hPa<extra></extra>'
+                        hovertemplate='Pressure: %{y:.0f} hPa<extra></extra>',
+                        showlegend=False
                     ), row=1, col=2)
                 
                 # Wind speed plot
@@ -666,55 +671,55 @@ def main():
                     fig.add_trace(go.Scatter(
                         x=x_data, y=df['wind_speed'],
                         mode='lines+markers',
-                        name='Wind Speed',
+                        name='Wind km/h',
                         line=dict(color='#1abc9c', width=2),
                         marker=dict(size=6),
                         fill='tozeroy',
                         fillcolor='rgba(26, 188, 156, 0.2)',
-                        hovertemplate='Wind: %{y:.1f} km/h<extra></extra>'
+                        hovertemplate='Wind: %{y:.1f} km/h<extra></extra>',
+                        showlegend=False
                     ), row=2, col=1)
                 
                 # Weather probabilities bar chart
                 weather_types = list(pred['weather_probs'].keys())
                 weather_probs = list(pred['weather_probs'].values())
                 weather_colors = ['#FFB347', '#B8C6DB', '#3A7BD5', '#E6DADA']
-                weather_icons = ['☀️ Sunny', '☁️ Cloudy', '🌧️ Rainy', '❄️ Snowy']
+                weather_labels = ['☀️', '☁️', '🌧️', '❄️']
                 
                 fig.add_trace(go.Bar(
-                    x=weather_icons,
+                    x=weather_labels,
                     y=[p * 100 for p in weather_probs],
-                    name='Prediction Probability',
-                    marker=dict(color=weather_colors, line=dict(width=1, color='#333')),
+                    name='Probability',
+                    marker=dict(color=weather_colors, line=dict(width=2, color='#333')),
                     text=[f'{p*100:.0f}%' for p in weather_probs],
                     textposition='outside',
-                    hovertemplate='%{x}: %{y:.1f}%<extra></extra>'
+                    textfont=dict(size=12, color='#333'),
+                    hovertemplate='%{x}: %{y:.1f}%<extra></extra>',
+                    showlegend=False
                 ), row=2, col=2)
                 
-                # Update layout
+                # Update layout - cleaner without legend
                 fig.update_layout(
                     template='plotly_white',
-                    height=500,
-                    showlegend=True,
-                    legend=dict(
-                        orientation="h",
-                        yanchor="bottom",
-                        y=-0.15,
-                        xanchor="center",
-                        x=0.5,
-                        font=dict(size=10)
-                    ),
-                    margin=dict(l=60, r=60, t=60, b=80)
+                    height=550,
+                    showlegend=False,
+                    margin=dict(l=50, r=50, t=80, b=50),
+                    font=dict(size=11)
                 )
                 
-                # Update axes labels
-                fig.update_xaxes(title_text="Date", row=1, col=1)
-                fig.update_yaxes(title_text="°C", row=1, col=1)
-                fig.update_xaxes(title_text="Date", row=1, col=2)
-                fig.update_yaxes(title_text="% / hPa", row=1, col=2)
-                fig.update_xaxes(title_text="Date", row=2, col=1)
-                fig.update_yaxes(title_text="km/h", row=2, col=1)
-                fig.update_xaxes(title_text="Weather Type", row=2, col=2)
-                fig.update_yaxes(title_text="Probability %", row=2, col=2, range=[0, 100])
+                # Update subplot titles font
+                for annotation in fig['layout']['annotations']:
+                    annotation['font'] = dict(size=14, color='#2c3e50')
+                
+                # Update axes - cleaner labels
+                fig.update_xaxes(tickfont=dict(size=9), row=1, col=1)
+                fig.update_yaxes(title_text="°C", titlefont=dict(size=11), tickfont=dict(size=9), row=1, col=1)
+                fig.update_xaxes(tickfont=dict(size=9), row=1, col=2)
+                fig.update_yaxes(title_text="Value", titlefont=dict(size=11), tickfont=dict(size=9), row=1, col=2)
+                fig.update_xaxes(tickfont=dict(size=9), row=2, col=1)
+                fig.update_yaxes(title_text="km/h", titlefont=dict(size=11), tickfont=dict(size=9), row=2, col=1)
+                fig.update_xaxes(tickfont=dict(size=12), row=2, col=2)
+                fig.update_yaxes(title_text="%", titlefont=dict(size=11), tickfont=dict(size=9), range=[0, 100], row=2, col=2)
                 
                 st.plotly_chart(fig, use_container_width=True)
                 
