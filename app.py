@@ -894,12 +894,14 @@ def main():
             with col1:
                 if model_status['baseline']:
                     import os
-                    baseline_stat = os.stat(model_status['baseline_path'])
-                    baseline_time = datetime.fromtimestamp(baseline_stat.st_mtime)
+                    baseline_dir = model_status['baseline_path']
+                    # Calculate total size of files in baseline directory
+                    baseline_size = sum(f.stat().st_size for f in baseline_dir.iterdir() if f.is_file())
+                    baseline_time = datetime.fromtimestamp(baseline_dir.stat().st_mtime)
                     st.success(f"✅ **Baseline Model** (RandomForest)")
-                    st.caption(f"📁 `{model_status['baseline_path'].name}`")
+                    st.caption(f"📁 `{baseline_dir.name}/` (2 files)")
                     st.caption(f"📅 Last modified: {baseline_time.strftime('%Y-%m-%d %H:%M')}")
-                    st.caption(f"📦 Size: {baseline_stat.st_size / 1024:.1f} KB")
+                    st.caption(f"📦 Size: {baseline_size / 1024:.1f} KB")
                 else:
                     st.warning("❌ Baseline model not found")
             
