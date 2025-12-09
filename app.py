@@ -741,10 +741,76 @@ def main():
     
     # TRAINING HISTORY TAB
     with tabs[2]:
+        st.markdown("### 📈 Training History")
+        
+        # First check for saved models trained via CLI
+        model_status = check_saved_models()
+        metrics_path = MODELS_DIR / "metrics.json"
+        
+        if model_status['transformer'] or model_status['baseline']:
+            st.markdown("#### 💾 Saved Models")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if model_status['baseline']:
+                    import os
+                    baseline_stat = os.stat(model_status['baseline_path'])
+                    baseline_time = datetime.fromtimestamp(baseline_stat.st_mtime)
+                    st.success(f"✅ **Baseline Model** (RandomForest)")
+                    st.caption(f"📁 `{model_status['baseline_path'].name}`")
+                    st.caption(f"📅 Last modified: {baseline_time.strftime('%Y-%m-%d %H:%M')}")
+                    st.caption(f"📦 Size: {baseline_stat.st_size / 1024:.1f} KB")
+                else:
+                    st.warning("❌ Baseline model not found")
+            
+            with col2:
+                if model_status['transformer']:
+                    transformer_stat = os.stat(model_status['transformer_path'])
+                    transformer_time = datetime.fromtimestamp(transformer_stat.st_mtime)
+                    st.success(f"✅ **Transformer Model**")
+                    st.caption(f"📁 `{model_status['transformer_path'].name}`")
+                    st.caption(f"📅 Last modified: {transformer_time.strftime('%Y-%m-%d %H:%M')}")
+                    st.caption(f"📦 Size: {transformer_stat.st_size / 1024:.1f} KB")
+                else:
+                    st.warning("❌ Transformer model not found")
+            
+            # Show metrics if available
+            if metrics_path.exists():
+                import json
+                with open(metrics_path, 'r') as f:
+                    saved_metrics = json.load(f)
+                
+                st.markdown("---")
+                st.markdown("#### 📊 Training Metrics (from last training run)")
+                st.caption(f"🕐 Trained on: {saved_metrics.get('timestamp', 'Unknown')[:19]}")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown("**🌲 Baseline Performance**")
+                    baseline_m = saved_metrics.get('baseline', {})
+                    st.write(f"- MAE: {baseline_m.get('temp_MAE', 'N/A'):.2f}°C" if isinstance(baseline_m.get('temp_MAE'), (int, float)) else f"- MAE: {baseline_m.get('temp_MAE', 'N/A')}")
+                    st.write(f"- RMSE: {baseline_m.get('temp_RMSE', 'N/A'):.2f}°C" if isinstance(baseline_m.get('temp_RMSE'), (int, float)) else f"- RMSE: {baseline_m.get('temp_RMSE', 'N/A')}")
+                    st.write(f"- Accuracy: {baseline_m.get('weather_Accuracy', 0)*100:.1f}%" if isinstance(baseline_m.get('weather_Accuracy'), (int, float)) else f"- Accuracy: {baseline_m.get('weather_Accuracy', 'N/A')}")
+                
+                with col2:
+                    st.markdown("**🤖 Transformer Performance**")
+                    trans_m = saved_metrics.get('transformer', {})
+                    st.write(f"- MAE: {trans_m.get('temp_MAE', 'N/A'):.2f}°C" if isinstance(trans_m.get('temp_MAE'), (int, float)) else f"- MAE: {trans_m.get('temp_MAE', 'N/A')}")
+                    st.write(f"- RMSE: {trans_m.get('temp_RMSE', 'N/A'):.2f}°C" if isinstance(trans_m.get('temp_RMSE'), (int, float)) else f"- RMSE: {trans_m.get('temp_RMSE', 'N/A')}")
+                    st.write(f"- Accuracy: {trans_m.get('weather_Accuracy', 0)*100:.1f}%" if isinstance(trans_m.get('weather_Accuracy'), (int, float)) else f"- Accuracy: {trans_m.get('weather_Accuracy', 'N/A')}")
+                
+                comparison = saved_metrics.get('comparison', {})
+                st.info(f"🏆 **Winners:** Temperature → {comparison.get('temp_winner', 'N/A')} | Weather → {comparison.get('weather_winner', 'N/A')}")
+        else:
+            st.warning("⚠️ No saved models found. Train models first!")
+            st.code("python run.py --mode full --days 180 --epochs 15", language="bash")
+        
+        st.markdown("---")
+        
+        # Show live training history from current session
+        st.markdown("#### 📈 Current Session Training Progress")
         if hasattr(st.session_state, 'training_history') and st.session_state.training_history:
             history = st.session_state.training_history
-            
-            st.markdown("### 📈 Training Progress")
             
             epochs = list(range(1, len(history.train_losses) + 1))
             
@@ -764,7 +830,7 @@ def main():
             
             st.success(f"🏆 **Best epoch:** {history.best_epoch + 1} | **Best val loss:** {history.best_val_loss:.4f}")
         else:
-            st.info("Train models to see training history.")
+            st.caption("💡 Train models from the sidebar to see live training curves here.")
     
     # ABOUT TAB
     with tabs[3]:
