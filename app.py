@@ -443,15 +443,16 @@ def render_current_vs_prediction(prediction: dict):
             st.info("Current weather data not available")
 
 
-def train_models_ui(data_source: str, num_epochs: int, location: str):
-    """Train models from UI."""
+def train_models_ui(data_source: str, num_epochs: int, location: str, days: int = 365):
+    """Train models from UI with specified amount of data."""
     
     progress = st.progress(0)
     status = st.empty()
     
     try:
-        data_retriever = get_data_retriever()
-        data_agent = get_data_agent()
+        # Create fresh agents (not cached) for training
+        data_retriever = DataRetriever()
+        data_agent = DataAgent(sequence_length=7)
         baseline_agent = BaselineAgent(use_xgboost=False, random_state=42)
         
         locations = DataRetriever.get_popular_locations()
@@ -459,25 +460,27 @@ def train_models_ui(data_source: str, num_epochs: int, location: str):
             lat, lon, tz = locations[location]
             data_retriever.set_location(lat, lon, tz)
         
-        status.text("📡 Fetching weather data...")
+        status.text(f"📡 Fetching {days} days of weather data...")
         progress.progress(10)
         
-        if data_source == "Live Data (Open-Meteo API)":
+        if data_source == "Fetch Fresh Data (Recommended)":
             end_date = datetime.now()
-            start_date = end_date - timedelta(days=180)
+            start_date = end_date - timedelta(days=days)
             df = data_retriever.fetch_historical_data(
                 start_date.strftime('%Y-%m-%d'),
                 end_date.strftime('%Y-%m-%d')
             )
             DATA_DIR.mkdir(parents=True, exist_ok=True)
             df.to_csv(DATA_DIR / f"weather_data_{location.lower()}.csv", index=False)
+            status.text(f"✅ Fetched {len(df)} days of data!")
         else:
             data_path = DATA_DIR / f"weather_data_{location.lower()}.csv"
             if data_path.exists():
                 df = pd.read_csv(data_path)
                 df['date'] = pd.to_datetime(df['date'])
+                status.text(f"📂 Using existing data: {len(df)} days")
             else:
-                st.error("No existing data found. Please fetch live data first.")
+                st.error("No existing data found. Please select 'Fetch Fresh Data'.")
                 return False
         
         status.text(f"📊 Processing {len(df)} days of data...")
@@ -579,16 +582,19 @@ def main():
         st.markdown("### 🔧 Training")
         
         with st.expander("Train New Models"):
+            training_days = st.slider("Days of training data", 90, 730, 365, help="More data = better model (up to 2 years)")
             data_source = st.radio(
                 "Data Source",
-                ["Use Existing Data", "Live Data (Open-Meteo API)"]
+                ["Fetch Fresh Data (Recommended)", "Use Existing Data"]
             )
-            num_epochs = st.slider("Epochs", 5, 30, 15)
+            num_epochs = st.slider("Epochs", 5, 50, 20)
             
-            if st.button("🚀 Start Training"):
-                success = train_models_ui(data_source, num_epochs, location)
+            if st.button("🚀 Start Training", type="primary"):
+                success = train_models_ui(data_source, num_epochs, location, training_days)
                 if success:
                     st.success("Models trained and saved!")
+                    # Clear cached models to reload fresh ones
+                    load_saved_models.clear()
                     st.rerun()
         
         st.markdown("---")
@@ -596,11 +602,11 @@ def main():
         st.markdown("### 📡 Data")
         
         with st.expander("Fetch New Data"):
-            days = st.slider("Days of history", 30, 365, 180)
+            days = st.slider("Days of history", 90, 730, 365, help="Up to 2 years of historical data")
             if st.button("📥 Fetch Data"):
                 with st.spinner(f"Fetching {days} days of data..."):
                     try:
-                        data_retriever = get_data_retriever()
+                        data_retriever = DataRetriever()
                         locs = DataRetriever.get_popular_locations()
                         if location in locs:
                             lat, lon, tz = locs[location]
@@ -614,7 +620,7 @@ def main():
                         )
                         DATA_DIR.mkdir(parents=True, exist_ok=True)
                         df.to_csv(DATA_DIR / f"weather_data_{location.lower()}.csv", index=False)
-                        st.success(f"✅ Fetched {len(df)} days!")
+                        st.success(f"✅ Fetched {len(df)} days of data!")
                     except Exception as e:
                         st.error(f"Failed: {e}")
     
