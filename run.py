@@ -250,7 +250,7 @@ def run_baseline_training(splits, config: Config):
     return baseline_agent
 
 
-def run_transformer_training(loaders, config: Config, args):
+def run_transformer_training(loaders, config: Config, args, splits=None):
     """
     Train transformer model.
     
@@ -258,10 +258,22 @@ def run_transformer_training(loaders, config: Config, args):
         Trained TransformerAgent
     """
     from src.agents.transformer_agent import TransformerAgent
+    import torch
     
     logger.info("=" * 60)
     logger.info("PHASE 4: TRANSFORMER MODEL TRAINING")
     logger.info("=" * 60)
+    
+    # Compute class weights to handle imbalanced data
+    class_weights = None
+    if splits is not None:
+        train_labels = splits['train'].class_targets.numpy()
+        class_counts = np.bincount(train_labels, minlength=len(config.data.weather_classes))
+        # Inverse frequency weighting
+        total_samples = len(train_labels)
+        class_weights = total_samples / (len(config.data.weather_classes) * class_counts + 1e-6)
+        class_weights = torch.FloatTensor(class_weights)
+        logger.info(f"Class weights (sunny, cloudy, rainy, snowy): {class_weights.tolist()}")
     
     # Create agent with transformer config
     transformer_agent = TransformerAgent(
@@ -274,6 +286,13 @@ def run_transformer_training(loaders, config: Config, args):
         max_seq_len=config.transformer.max_seq_len,
         num_classes=len(config.data.weather_classes),
         seed=config.seed
+    )
+    
+    # Build training components with class weights
+    transformer_agent.build_training_components(
+        learning_rate=config.training.learning_rate,
+        num_epochs=args.epochs,
+        class_weights=class_weights
     )
     
     # Train using DataLoaders
@@ -446,7 +465,7 @@ def run_full_pipeline(args):
     
     # Phase 4: Transformer Training (optional)
     if not args.no_train_transformer:
-        transformer_agent = run_transformer_training(loaders, config, args)
+        transformer_agent = run_transformer_training(loaders, config, args, splits)
     
     # Phase 5: Evaluation
     if baseline_agent and transformer_agent:

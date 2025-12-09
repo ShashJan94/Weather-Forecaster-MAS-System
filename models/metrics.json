@@ -1,20 +1,20 @@
 {
-  "timestamp": "2025-12-09T03:39:20.401833",
+  "timestamp": "2025-12-09T03:51:01.976558",
   "baseline": {
-    "temp_MAE": 1.6097686667820563,
-    "temp_RMSE": 1.9238386124630302,
-    "temp_R2": 0.7044541750459101,
-    "weather_Accuracy": 0.5185185185185185,
-    "weather_F1_macro": 0.2771867612293144,
-    "weather_F1_weighted": 0.4825759565712285
+    "temp_MAE": 1.5372505091106299,
+    "temp_RMSE": 1.9452379700945173,
+    "temp_R2": 0.9089124584177928,
+    "weather_Accuracy": 0.4954128440366973,
+    "weather_F1_macro": 0.3260530627345277,
+    "weather_F1_weighted": 0.4853754553578398
   },
   "transformer": {
-    "temp_MAE": 1.437727451324463,
-    "temp_RMSE": 1.7922443597050066,
-    "temp_R2": 0.7435030937194824,
-    "weather_Accuracy": 0.48148148148148145,
-    "weather_F1_macro": 0.23796791443850268,
-    "weather_F1_weighted": 0.42047930283224405
+    "temp_MAE": 1.5250502824783325,
+    "temp_RMSE": 1.9400732733466486,
+    "temp_R2": 0.9093955159187317,
+    "weather_Accuracy": 0.41284403669724773,
+    "weather_F1_macro": 0.3298139981908639,
+    "weather_F1_weighted": 0.331288719040328
   },
   "comparison": {
     "temp_winner": "Transformer",

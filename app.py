@@ -7,6 +7,7 @@ Loads saved models - no need to retrain!
 import streamlit as st
 import pandas as pd
 import numpy as np
+import torch
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -260,7 +261,12 @@ def get_narrator():
 
 @st.cache_data(ttl=300)  # Cache for 5 minutes
 def get_cached_prediction(location: str):
-    """Cache predictions to avoid redundant API calls."""
+    """Cache predictions to avoid redundant API calls.
+    
+    Uses hybrid approach:
+    - Transformer for temperature prediction
+    - Baseline for weather classification
+    """
     baseline_agent, transformer_agent, success = load_saved_models()
     if not success:
         return None
@@ -277,13 +283,25 @@ def get_cached_prediction(location: str):
     try:
         sequence_df, current = data_retriever.get_data_for_prediction(sequence_length=7)
         sequence = data_agent.prepare_single_sequence(sequence_df)
-        transformer_pred = transformer_agent.predict(sequence)
         
+        # Get Transformer prediction (good for temperature)
+        transformer_pred = transformer_agent.predict(sequence)
         temp_pred = transformer_pred['temperature']
-        weather_pred = transformer_pred['weather_type']
-        weather_probs = transformer_pred['class_probabilities']
-        confidence = weather_probs.get(weather_pred, 0.5)
-        is_cold = transformer_pred.get('is_cold_day', temp_pred < 10)
+        
+        # Get Baseline prediction (better for weather classification)
+        weather_classes = ['sunny', 'cloudy', 'rainy', 'snowy']
+        sequence_flat = sequence.numpy().reshape(1, -1)
+        baseline_weather_pred = baseline_agent.predict(sequence_flat)
+        weather_pred = weather_classes[int(baseline_weather_pred['weather_class'][0])]
+        weather_probs = baseline_weather_pred.get('weather_probs', {weather_pred: 0.7})
+        
+        if isinstance(weather_probs, np.ndarray):
+            weather_probs = {cls: float(p) for cls, p in zip(weather_classes, weather_probs[0])}
+            confidence = max(weather_probs.values())
+        else:
+            confidence = weather_probs.get(weather_pred, 0.6)
+        
+        is_cold = temp_pred < 10
         
         forecast = narrator.generate_forecast(
             temperature=temp_pred,
@@ -310,7 +328,12 @@ def get_cached_prediction(location: str):
 
 
 def make_quick_prediction(location: str = "Warsaw"):
-    """Make a prediction using saved models."""
+    """Make a prediction using saved models.
+    
+    Uses hybrid approach:
+    - Transformer for temperature prediction (better at regression)
+    - Baseline (RandomForest) for weather classification (better at imbalanced classification)
+    """
     
     baseline_agent, transformer_agent, success = load_saved_models()
     if not success:
@@ -328,13 +351,26 @@ def make_quick_prediction(location: str = "Warsaw"):
     try:
         sequence_df, current = data_retriever.get_data_for_prediction(sequence_length=7)
         sequence = data_agent.prepare_single_sequence(sequence_df)
-        transformer_pred = transformer_agent.predict(sequence)
         
+        # Get Transformer prediction (good for temperature)
+        transformer_pred = transformer_agent.predict(sequence)
         temp_pred = transformer_pred['temperature']
-        weather_pred = transformer_pred['weather_type']
-        weather_probs = transformer_pred['class_probabilities']
-        confidence = weather_probs.get(weather_pred, 0.5)
-        is_cold = transformer_pred.get('is_cold_day', temp_pred < 10)
+        
+        # Get Baseline prediction (better for weather classification with imbalanced data)
+        sequence_flat = sequence.numpy().reshape(1, -1)
+        baseline_weather_pred = baseline_agent.predict(sequence_flat)
+        weather_classes = ['sunny', 'cloudy', 'rainy', 'snowy']
+        weather_pred = weather_classes[int(baseline_weather_pred['weather_class'][0])]
+        weather_probs = baseline_weather_pred.get('weather_probs', {weather_pred: 0.7})
+        
+        # Use max probability as confidence
+        if isinstance(weather_probs, np.ndarray):
+            weather_probs = {cls: float(p) for cls, p in zip(weather_classes, weather_probs[0])}
+            confidence = max(weather_probs.values())
+        else:
+            confidence = weather_probs.get(weather_pred, 0.6)
+        
+        is_cold = temp_pred < 10
         
         forecast = narrator.generate_forecast(
             temperature=temp_pred,
@@ -510,12 +546,26 @@ def train_models_ui(data_source: str, num_epochs: int, location: str, days: int 
         status.text("🤖 Training Transformer Model...")
         progress.progress(50)
         
+        # Compute class weights to handle imbalanced data
+        train_labels = splits['train'].class_targets.numpy()
+        class_counts = np.bincount(train_labels, minlength=4)
+        total_samples = len(train_labels)
+        class_weights = total_samples / (4 * class_counts + 1e-6)
+        class_weights = torch.FloatTensor(class_weights)
+        
         transformer_agent = TransformerAgent(
             num_features=data_agent.num_features,
             d_model=64,
             num_heads=2,
             num_layers=2,
             d_ff=128
+        )
+        
+        # Build with class weights for imbalanced data
+        transformer_agent.build_training_components(
+            learning_rate=1e-3,
+            num_epochs=num_epochs,
+            class_weights=class_weights
         )
         
         history = transformer_agent.train(
@@ -525,12 +575,13 @@ def train_models_ui(data_source: str, num_epochs: int, location: str, days: int 
             early_stopping_patience=5
         )
         
-        status.text("💾 Saving models...")
+        status.text("💾 Saving models and scaler...")
         progress.progress(90)
         
         MODELS_DIR.mkdir(parents=True, exist_ok=True)
         baseline_agent.save_models(MODELS_DIR / "baseline")
         transformer_agent.save(MODELS_DIR / "transformer_model.pth")
+        data_agent.save_scaler(MODELS_DIR / "scaler.joblib")  # Save scaler for inference
         
         progress.progress(100)
         status.text("✅ Training complete!")
