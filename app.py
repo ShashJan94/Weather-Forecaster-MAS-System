@@ -693,6 +693,9 @@ def main():
                 render_probability_bars(pred['weather_probs'])
                 st.markdown("</div>", unsafe_allow_html=True)
             
+            # Info about hybrid approach
+            st.info("🔬 **Hybrid Prediction:** Temperature from Transformer (MAE ~1.5°C) | Weather from RandomForest (50% accuracy)")
+            
             st.markdown("---")
             
             col1, col2 = st.columns(2)
@@ -1007,10 +1010,9 @@ def main():
         if model_status['transformer'] or model_status['baseline']:
             st.markdown("#### 💾 Saved Models")
             
-            col1, col2 = st.columns(2)
+            col1, col2, col3 = st.columns(3)
             with col1:
                 if model_status['baseline']:
-                    import os
                     baseline_dir = model_status['baseline_path']
                     # Calculate total size of files in baseline directory
                     baseline_size = sum(f.stat().st_size for f in baseline_dir.iterdir() if f.is_file())
@@ -1019,6 +1021,7 @@ def main():
                     st.caption(f"📁 `{baseline_dir.name}/` (2 files)")
                     st.caption(f"📅 Last modified: {baseline_time.strftime('%Y-%m-%d %H:%M')}")
                     st.caption(f"📦 Size: {baseline_size / 1024:.1f} KB")
+                    st.caption("🎯 Used for: **Weather Classification**")
                 else:
                     st.warning("❌ Baseline model not found")
             
@@ -1030,8 +1033,22 @@ def main():
                     st.caption(f"📁 `{model_status['transformer_path'].name}`")
                     st.caption(f"📅 Last modified: {transformer_time.strftime('%Y-%m-%d %H:%M')}")
                     st.caption(f"📦 Size: {transformer_stat.st_size / 1024:.1f} KB")
+                    st.caption("🎯 Used for: **Temperature Prediction**")
                 else:
                     st.warning("❌ Transformer model not found")
+            
+            with col3:
+                scaler_path = MODELS_DIR / "scaler.joblib"
+                if scaler_path.exists():
+                    scaler_stat = os.stat(scaler_path)
+                    scaler_time = datetime.fromtimestamp(scaler_stat.st_mtime)
+                    st.success(f"✅ **Data Scaler**")
+                    st.caption(f"📁 `{scaler_path.name}`")
+                    st.caption(f"📅 Last modified: {scaler_time.strftime('%Y-%m-%d %H:%M')}")
+                    st.caption(f"📦 Size: {scaler_stat.st_size / 1024:.1f} KB")
+                    st.caption("🎯 Used for: **Data Normalization**")
+                else:
+                    st.warning("❌ Scaler not found")
             
             # Show metrics if available
             if metrics_path.exists():
@@ -1096,26 +1113,32 @@ def main():
         st.markdown("""
         ### 🌤️ About Weather Forecaster AI
         
-        A **Multi-Agent System (MAS)** for weather prediction.
+        A **Multi-Agent System (MAS)** for weather prediction using a **hybrid approach**.
+        
+        #### 🎯 Hybrid Prediction Strategy
+        
+        | Task | Model | Why |
+        |------|-------|-----|
+        | 🌡️ **Temperature** | Transformer | Better at learning temporal patterns |
+        | ☁️ **Weather Type** | RandomForest | Better at handling imbalanced classes |
         
         #### 🤖 The 6 Agents
         
         | Agent | Role |
         |-------|------|
         | 📡 **Data Retriever** | Fetches live weather from Open-Meteo API |
-        | 📊 **Data Agent** | Preprocesses data, creates sequences |
-        | 🌲 **Baseline Agent** | RandomForest/XGBoost models |
-        | 🤖 **Transformer Agent** | Tiny transformer (72K params) |
-        | 📈 **Evaluation Agent** | Compares models, ensemble predictions |
+        | 📊 **Data Agent** | Preprocesses data, creates sequences, normalizes |
+        | 🌲 **Baseline Agent** | RandomForest models (used for weather classification) |
+        | 🤖 **Transformer Agent** | Tiny transformer 72K params (used for temperature) |
+        | 📈 **Evaluation Agent** | Compares models, calculates metrics |
         | 📝 **Narrator Agent** | Generates human-readable forecasts |
         
-        #### 🎯 Predictions
-        - **Temperature**: Tomorrow's temperature in °C
-        - **Weather Type**: ☀️ Sunny / ☁️ Cloudy / 🌧️ Rainy / ❄️ Snowy
+        #### 📊 Weather Distribution in Training Data
+        - 🌧️ Rainy: ~48% | ☁️ Cloudy: ~39% | ❄️ Snowy: ~10% | ☀️ Sunny: ~3%
         
         #### 🚀 Commands
         ```bash
-        python run.py --mode full --days 180 --epochs 15  # Train
+        python run.py --mode full --days 730 --epochs 30  # Train with 2 years
         python run.py --mode predict                       # Predict
         python run.py --mode ui                            # This UI
         ```
