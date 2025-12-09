@@ -206,8 +206,9 @@ def check_saved_models() -> dict:
     }
 
 
+@st.cache_resource
 def load_saved_models():
-    """Load pre-trained models from disk."""
+    """Load pre-trained models from disk. Cached for performance."""
     model_status = check_saved_models()
     
     if not model_status['transformer'] or not model_status['baseline']:
@@ -234,12 +235,71 @@ def load_saved_models():
 
 @st.cache_resource
 def get_data_agent():
+    """Cached DataAgent instance."""
     return DataAgent(sequence_length=7)
 
 
 @st.cache_resource
 def get_data_retriever():
+    """Cached DataRetriever instance."""
     return DataRetriever()
+
+
+@st.cache_resource
+def get_narrator():
+    """Cached NarratorAgent instance."""
+    return NarratorAgent(use_emoji=True)
+
+
+@st.cache_data(ttl=300)  # Cache for 5 minutes
+def get_cached_prediction(location: str):
+    """Cache predictions to avoid redundant API calls."""
+    baseline_agent, transformer_agent, success = load_saved_models()
+    if not success:
+        return None
+    
+    data_retriever = get_data_retriever()
+    data_agent = get_data_agent()
+    narrator = get_narrator()
+    
+    locations = DataRetriever.get_popular_locations()
+    if location in locations:
+        lat, lon, tz = locations[location]
+        data_retriever.set_location(lat, lon, tz)
+    
+    try:
+        sequence_df, current = data_retriever.get_data_for_prediction(sequence_length=7)
+        sequence = data_agent.prepare_single_sequence(sequence_df)
+        transformer_pred = transformer_agent.predict(sequence)
+        
+        temp_pred = transformer_pred['temperature']
+        weather_pred = transformer_pred['weather_type']
+        weather_probs = transformer_pred['class_probabilities']
+        confidence = weather_probs.get(weather_pred, 0.5)
+        is_cold = transformer_pred.get('is_cold_day', temp_pred < 10)
+        
+        forecast = narrator.generate_forecast(
+            temperature=temp_pred,
+            weather_type=weather_pred,
+            confidence=confidence,
+            is_cold_day=is_cold,
+            location=location,
+            target_date="Tomorrow"
+        )
+        
+        return {
+            'temperature': temp_pred,
+            'weather_type': weather_pred,
+            'weather_probs': weather_probs,
+            'confidence': confidence,
+            'is_cold': is_cold,
+            'forecast': forecast,
+            'current_weather': current,
+            'sequence_df': sequence_df
+        }
+        
+    except Exception as e:
+        return None
 
 
 def make_quick_prediction(location: str = "Warsaw"):
