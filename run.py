@@ -196,6 +196,10 @@ def run_data_processing(data_path: Path, config: Config):
     logger.info(f"Val sequences: {len(splits['val'])}")
     logger.info(f"Test sequences: {len(splits['test'])}")
     
+    # Save the scaler for inference
+    scaler_path = config.models_dir / "scaler.joblib"
+    data_agent.save_scaler(scaler_path)
+    
     return splits, loaders, data_agent
 
 

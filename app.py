@@ -235,8 +235,15 @@ def load_saved_models():
 
 @st.cache_resource
 def get_data_agent():
-    """Cached DataAgent instance."""
-    return DataAgent(sequence_length=7)
+    """Cached DataAgent instance with loaded scaler."""
+    agent = DataAgent(sequence_length=7)
+    
+    # Load scaler if available (fitted during training)
+    scaler_path = MODELS_DIR / "scaler.joblib"
+    if scaler_path.exists():
+        agent.load_scaler(scaler_path)
+    
+    return agent
 
 
 @st.cache_resource
